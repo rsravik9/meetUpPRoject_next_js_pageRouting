@@ -1,50 +1,53 @@
-import React, { Fragment, useState, useEffect } from 'react'
+import React, { Fragment } from 'react'
 import MeetupList from '../components/meetups/MeetupList'
+import { MongoClient } from 'mongodb'
 
-
-function HomePage() {
-    const [loadedMeetUps, setLoadedMeetUps] = useState([])
-    useEffect(() => { 
-        // Send HTTP request
-        setLoadedMeetUps(dummyMeetups)
-    }, [])
+function HomePage(props) {
     return (
         <Fragment>
-            <MeetupList meetups={loadedMeetUps} />
+            <MeetupList meetups={props.meetups} />
         </Fragment>
     )
 }
 
+// This only works om "Page" folder:
+// This "getStaticProps" components runs 1'st and it is server side runner
+export async function getStaticProps() {
+    const client = await MongoClient.connect("mongodb+srv://rsravik9:yZ9LkYMvNfpUW6Ve@cluster0.pth9ptd.mongodb.net/meetupDB?retryWrites=true&w=majority&appName=Cluster0")
+    const db = client.db();
+
+    const meetupCollection = db.collection("meetups")
+
+    const allmeetups = await meetupCollection.find().toArray()
+    client.close(); // It is important to close connection after done.
+
+
+    return {
+        props: {
+            meetups: allmeetups.map((ele) => {
+                return {
+                    title: ele.title,
+                    address: ele.address,
+                    image: ele.image,
+                    description: ele.description,
+                    id: ele._id.toString()
+                }
+            })
+        },
+        revalidate: 10 // After deployment in every 10 seconds it will re gererated on server
+    }
+}
+
+// export async function getServerSideProps(context) {
+//     const req = context.req;
+//     const res = context.res;
+//     return {
+//         props: {
+//             meetups: dummyMeetups
+//         },
+//     }
+// }
+
 export default HomePage;
 
 
-const dummyMeetups = [
-    {
-        id: 1,
-        title: "First Meetup",
-        image: "https://www.meetup.com/_next/image/?url=%2Fimages%2Fcity%2Fdescriptions%2Fchicago.jpg&w=640&q=75",
-        address: "Some Address For First Meetup",
-        description: "This is first ever meetup"
-    },
-    {
-        id: 2,
-        title: "Second Meetup",
-        image: "https://www.meetup.com/_next/image/?url=%2Fimages%2Fcity%2Fdescriptions%2Fnew_york.jpg&w=640&q=75",
-        address: "Some Address For second Meetup",
-        description: "This is Second ever meetup"
-    },
-    {
-        id: 3,
-        title: "Third Meetup",
-        image: "https://www.meetup.com/_next/image/?url=%2Fimages%2Fcity%2Fdescriptions%2Fsan_francisco.jpg&w=640&q=75",
-        address: "Some Address For third Meetup",
-        description: "This is Third ever meetup"
-    },
-    {
-        id: 4,
-        title: "Fourth Meetup",
-        image: "https://secure.meetupstatic.com/next/images/city/descriptions/nashville.webp?w=1920",
-        address: "Some Address For fourth Meetup",
-        description: "This is Fourth ever meetup"
-    },
-]
